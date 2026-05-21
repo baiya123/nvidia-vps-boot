@@ -157,6 +157,51 @@ crontab -e
                     验证返回的 sleep_at 是否匹配
 ```
 
+## 🔧 常见问题
+
+### SSH 连接报错：`Authentication that can continue: publickey`
+
+**现象**：SSH 客户端连接实例时提示类似：
+
+```
+Available client authentication methods: password
+Authentication that can continue: publickey
+```
+
+**原因**：你的 SSH 客户端想用密码登录，但云端 Ubuntu 镜像默认 **只允许密钥登录**，拒绝了密码方式。
+
+> 💡 能看到这个报错说明网络已经通了（拓扑、网线配置都没问题），只是认证方式不匹配。
+
+**解决方法**：在网页终端中开启密码登录。
+
+回到 DSX Air 网页上的黑色终端（之前敲 `sudo dhclient eth0` 的地方），依次执行：
+
+**第一步：强制允许密码登录**
+
+```bash
+sudo bash -c "echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config.d/99-allow-pass.conf"
+```
+
+**第二步：重启 SSH 服务使配置生效**
+
+```bash
+sudo systemctl restart ssh
+```
+
+> 没有报错就是成功。
+
+**第三步：重新连接**
+
+回到你的 SSH 客户端，重新连接。这次会弹出密码输入框，输入默认密码：
+
+```
+nvidia
+```
+
+即可成功登录 🎉
+
+---
+
 ## ⚠️ 注意事项
 
 - **抢占脚本**依赖浏览器已登录的 Cookie 进行认证，请确保 **已登录** DSX Air 平台
