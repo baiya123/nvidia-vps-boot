@@ -1,6 +1,6 @@
-# 🎮 NVIDIA DSX Air GPU Grabber
+# 🎮 NVIDIA DSX Air GPU Grabber & Keepalive
 
-> 自动抢占 NVIDIA DSX Air 平台 GPU 模拟实例的油猴脚本，带可视化控制面板。
+> 自动抢占 NVIDIA DSX Air 平台 GPU 模拟实例的油猴脚本 + API 自动保活脚本。
 
 ## ✨ 功能特性
 ![alt text](image.png)
@@ -13,12 +13,14 @@
 - 📜 **活动日志** — 彩色高亮滚动日志，最多 80 条记录
 - 🔔 **多重通知** — 抢到后播放提示音 + 浏览器弹窗通知
 - ⏹️ **一键停止** — 随时停止/重启抢占
+- 💓 **API 自动保活** — 定时续期 `sleep_at`，防止实例被强制休眠
 
 ## 📦 文件说明
 
 | 文件 | 说明 |
 |---|---|
-| `nvidia-gpu-grabber.user.js` | 油猴脚本（推荐使用） |
+| `nvidia-gpu-grabber.user.js` | 油猴脚本 — 浏览器端自动抢占（推荐） |
+| `keep_live.sh` | 保活脚本 — 通过 API 自动续期，防止实例休眠 |
 | `main.js` | 原始控制台注入版本（无 UI） |
 
 ## 🚀 安装使用
@@ -95,10 +97,71 @@
 
 在脚本中搜索 `await sleep(...)` 调整对应状态的轮询间隔（单位：毫秒）。
 
+## 💓 自动保活（keep_live.sh）
+
+免费用户的 Simulation 实例默认最多保持 **3 天**活跃后会被强制休眠。`keep_live.sh` 通过 API 定时将 `sleep_at` 往后延 71 小时，实现自动续期保活。
+
+> ⚠️ **关于 3 天限制**：之前确认是 3 天自动休眠，但近期手动延长时未被拒绝，此限制可能已调整，存疑。
+
+### 获取 API Key
+
+1. 访问 [NVIDIA NGC API Keys](https://org.ngc.nvidia.com/account/api-keys)
+2. 点击 **Generate API Key**
+3. 选择所需权限，创建并 **妥善保存** Key（仅显示一次）
+
+### 配置
+
+编辑 `keep_live.sh`，填入你的凭据：
+
+```bash
+NVIDIA_AIR_API_KEY="你的API Key"
+SIMULATION_ID="你的Simulation UUID"
+```
+
+### 手动运行
+
+```bash
+chmod +x keep_live.sh
+./keep_live.sh
+```
+
+输出示例：
+```
+target_sleep_at=2026-05-24T06:00:00Z
+before_sleep_at=2026-05-22T11:00:00Z
+after_sleep_at=2026-05-24T06:00:00Z
+ok
+```
+
+### 定时自动保活（Cron）
+
+建议每 **6 小时**执行一次，确保稳定续期：
+
+```bash
+crontab -e
+```
+
+添加：
+
+```cron
+0 */6 * * * /path/to/keep_live.sh >> /var/log/nvidia-keepalive.log 2>&1
+```
+
+### 工作原理
+
+```
+当前时间 ──► +71小时 ──► 设置为新的 sleep_at
+                              │
+                    PATCH /api/v3/simulations/{id}/
+                              │
+                    验证返回的 sleep_at 是否匹配
+```
+
 ## ⚠️ 注意事项
 
-- 脚本依赖浏览器已登录的 Cookie 进行认证，请确保 **已登录** DSX Air 平台
-- 长时间运行请保持浏览器标签页 **前台活跃**，避免被浏览器节流
+- **抢占脚本**依赖浏览器已登录的 Cookie 进行认证，请确保 **已登录** DSX Air 平台
+- 长时间运行抢占脚本请保持浏览器标签页 **前台活跃**，避免被浏览器节流
+- **保活脚本**需要 API Key，请勿将 Key 提交到公开仓库
 - 请合理使用，避免过于频繁的请求对平台造成负担
 
 ## 📄 License
